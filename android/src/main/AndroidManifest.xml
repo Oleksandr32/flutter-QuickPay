@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.oleksandr32.quick_pay">
+
+    <application>
+        <activity android:name="net.quickpay.quickpaysdk.QuickPayActivity" />
+    </application>
+</manifest>
