@@ -26,19 +26,22 @@ class QuickPay {
     } on PlatformException catch (error) {
       switch (error.code) {
         case "0":
-          throw CreatePaymentException(error.message);
+          throw QuickPaySetupException(error.message);
           break;
         case "1":
-          throw CreatePaymentLinkException(error.message);
+          throw CreatePaymentException(error.details);
           break;
         case "2":
-          throw ActivityException(error.message);
+          throw CreatePaymentLinkException(error.details);
           break;
         case "3":
-          throw ActivityFailureException(error.message);
+          throw ActivityException(error.details);
           break;
         case "4":
-          throw PaymentFailureException(error.message);
+          throw ActivityFailureException(error.details);
+          break;
+        case "5":
+          throw PaymentFailureException(error.details);
           break;
         default:
           break;

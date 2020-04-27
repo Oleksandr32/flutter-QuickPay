@@ -1,3 +1,14 @@
+class QuickPaySetupException implements Exception {
+  final String message;
+
+  QuickPaySetupException(this.message);
+
+  @override
+  String toString() {
+    return 'QuickPaySetupException: $message';
+  }
+}
+
 class CreatePaymentException implements Exception {
   final String message;
 
