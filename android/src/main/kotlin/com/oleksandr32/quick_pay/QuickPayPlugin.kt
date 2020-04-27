@@ -2,7 +2,8 @@ package com.oleksandr32.quick_pay
 
 import android.app.Activity
 import android.content.Context
-import androidx.annotation.NonNull;
+import android.content.Intent
+import androidx.annotation.NonNull
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -11,18 +12,17 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry.Registrar
+import io.flutter.plugin.common.PluginRegistry.ActivityResultListener
 import net.quickpay.quickpaysdk.QuickPay
 import net.quickpay.quickpaysdk.QuickPayActivity
-import net.quickpay.quickpaysdk.networking.quickpayapi.quickpaylink.payments.QPCreatePaymentLinkParameters
-import net.quickpay.quickpaysdk.networking.quickpayapi.quickpaylink.payments.QPCreatePaymentLinkRequest
-import net.quickpay.quickpaysdk.networking.quickpayapi.quickpaylink.payments.QPCreatePaymentParameters
-import net.quickpay.quickpaysdk.networking.quickpayapi.quickpaylink.payments.QPCreatePaymentRequest
+import net.quickpay.quickpaysdk.networking.quickpayapi.quickpaylink.payments.*
 
 /** QuickPayPlugin */
-public class QuickPayPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
+public class QuickPayPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, ActivityResultListener {
     private lateinit var context: Context
     private lateinit var activity: Activity
     private lateinit var channel: MethodChannel
+    private var pendingResult: Result? = null
 
     private var currentPaymentId: Int? = null
 
@@ -37,6 +37,15 @@ public class QuickPayPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     }
 
     companion object {
+        private const val METHOD_CALL_INIT = "init"
+        private const val METHOD_CALL_MAKE_PAYMENT = "makePayment"
+
+        private const val CREATE_PAYMENT_ERROR = "0"
+        private const val CREATE_PAYMENT_LINK_ERROR = "1"
+        private const val ACTIVITY_ERROR = "2"
+        private const val ACTIVITY_FAILURE_ERROR = "3"
+        private const val PAYMENT_FAILURE_ERROR = "4"
+
         @JvmStatic
         fun registerWith(registrar: Registrar) {
             val channel = MethodChannel(registrar.messenger(), "quick_pay")
@@ -44,13 +53,15 @@ public class QuickPayPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         }
     }
 
+
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
-        when {
-            call.method == "init" -> {
+        pendingResult = result
+        when (call.method) {
+            METHOD_CALL_INIT -> {
                 val apiKey = call.argument<String>("api-key") ?: return
                 init(apiKey)
             }
-            call.method == "makePayment" -> {
+            METHOD_CALL_MAKE_PAYMENT -> {
                 val currency = call.argument<String>("currency")!!
                 val orderId = call.argument<String>("order-id")!!
                 val price = call.argument<Double>("price")!!
@@ -58,6 +69,43 @@ public class QuickPayPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             }
             else -> result.notImplemented()
         }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent?): Boolean {
+        if (requestCode == QuickPayActivity.QUICKPAY_INTENT_CODE) {
+            if (resultCode == Activity.RESULT_OK) {
+                val returnedResult = intent?.data?.toString() ?: ""
+
+                if (returnedResult == QuickPayActivity.SUCCESS_RESULT) {
+                    if (currentPaymentId != null) {
+                        val getPaymentRequest = QPGetPaymentRequest(currentPaymentId!!)
+
+                        getPaymentRequest.sendRequest(
+                                listener = { payment ->
+                                    pendingResult?.success(payment.accepted)
+                                },
+                                errorListener = { _, message, error ->
+                                    pendingResult?.error(PAYMENT_FAILURE_ERROR, message, error?.message)
+                                }
+                        )
+
+                        currentPaymentId = null
+                        clearResult()
+                    }
+                } else if (returnedResult == QuickPayActivity.FAILURE_RESULT) {
+                    pendingResult?.error(ACTIVITY_FAILURE_ERROR, "QuickPayActivity failure", "")
+                    clearResult()
+
+                }
+            } else if (requestCode == Activity.RESULT_CANCELED) {
+                pendingResult?.error(ACTIVITY_ERROR, "Activity error", "")
+                clearResult()
+            }
+
+            return true
+        }
+
+        return false
     }
 
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
@@ -68,7 +116,7 @@ public class QuickPayPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         QuickPay.init(apiKey, context)
     }
 
-    private fun makePayment(currency: String, orderId: String, price: Double, listener: Result) {
+    private fun makePayment(currency: String, orderId: String, price: Double) {
         val createPaymentParams = QPCreatePaymentParameters(currency, orderId)
         val createPaymentRequest = QPCreatePaymentRequest(createPaymentParams)
 
@@ -83,14 +131,29 @@ public class QuickPayPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                             listener = { paymentLink ->
                                 QuickPayActivity.openQuickPayPaymentWindow(activity, paymentLink)
                             },
-                            errorListener = { statusCode, message, error ->
-                                listener.error(statusCode, message, error?.message)
+                            errorListener = { _, message, error ->
+                                pendingResult?.error(CREATE_PAYMENT_LINK_ERROR, message, error?.message)
+                                clearResult()
                             }
                     )
                 },
-                errorListener = { statusCode, message, error ->
-                    listener.error(statusCode, message, error?.message)
+                errorListener = { _, message, error ->
+                    pendingResult?.error(CREATE_PAYMENT_ERROR, message, error?.message)
+                    clearResult()
                 }
         )
+    }
+
+    private fun clearResult() {
+        pendingResult = null
+    }
+
+    override fun onReattachedToActivityForConfigChanges(activityPluginBinding: ActivityPluginBinding) {
+    }
+
+    override fun onDetachedFromActivity() {
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
     }
 }

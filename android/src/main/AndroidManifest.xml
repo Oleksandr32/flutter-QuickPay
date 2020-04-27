@@ -1,7 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.oleksandr32.quick_pay">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application>
-        <activity android:name="net.quickpay.quickpaysdk.QuickPayActivity" />
+        <activity
+            android:name="net.quickpay.quickpaysdk.QuickPayActivity"
+            android:theme="@style/Theme.AppCompat.NoActionBar" />
     </application>
 </manifest>
