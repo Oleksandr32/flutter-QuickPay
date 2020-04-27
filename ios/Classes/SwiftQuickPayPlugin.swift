@@ -3,17 +3,86 @@ import UIKit
 import QuickPaySDK
 
 public class SwiftQuickPayPlugin: NSObject, FlutterPlugin {
-  public static func register(with registrar: FlutterPluginRegistrar) {
-    let channel = FlutterMethodChannel(name: "quick_pay", binaryMessenger: registrar.messenger())
-    let instance = SwiftQuickPayPlugin()
-    registrar.addMethodCallDelegate(instance, channel: channel)
-  }
-
-  public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-    if (call.method == "init") {
-        let args = call.arguments as! NSDictionary
-        guard let apiKey : String = args.value(forKey: "api-key") as? String  else { return }
-        QuickPay.initWith(apiKey: apiKey)
+    private let METHOD_CALL_INIT = "init"
+    private let METHOD_CALL_MAKE_PAYMENT = "makePayment"
+    
+    private let CREATE_PAYMENT_ERROR = "0"
+    private let CREATE_PAYMENT_LINK_ERROR = "1"
+    private let ACTIVITY_FAILURE_ERROR = "3"
+    private let PAYMENT_FAILURE_ERROR = "4"
+    
+    private var currentPaymentId: Int? = nil
+    private var pendingResult: FlutterResult? = nil
+    private var viewController: UIViewController? = nil
+    
+    init(viewController: UIViewController) {
+        self.viewController = viewController
     }
-  }
+
+    public static func register(with registrar: FlutterPluginRegistrar) {
+        let viewController: UIViewController = (UIApplication.shared.delegate?.window??.rootViewController)!;
+        let channel = FlutterMethodChannel(name: "quick_pay", binaryMessenger: registrar.messenger())
+        let instance = SwiftQuickPayPlugin(viewController: viewController)
+        registrar.addMethodCallDelegate(instance, channel: channel)
+    }
+
+    public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        pendingResult = result
+        if (call.method == METHOD_CALL_INIT) {
+            let args = call.arguments as! NSDictionary
+            guard let apiKey : String = args.value(forKey: "api-key") as? String  else { return }
+            initQuickPay(apiKey: apiKey)
+        } else if (call.method == METHOD_CALL_MAKE_PAYMENT) {
+            let args = call.arguments as! NSDictionary
+            guard let currency : String = args.value(forKey: "currency") as? String  else { return }
+            guard let orderId : String = args.value(forKey: "order-id") as? String  else { return }
+            guard let price : Double = args.value(forKey: "price") as? Double  else { return }
+            makePayment(currency: currency, orderId: orderId, price: price)
+        }
+    }
+    
+    private func initQuickPay(apiKey: String) {
+        QuickPay.initWith(apiKey: apiKey)
+        clearResult()
+    }
+    
+    private func makePayment(currency: String, orderId: String, price: Double) {
+        let createPeymentParams = QPCreatePaymentParameters(currency: currency, order_id: orderId)
+        let createPaymentRequest = QPCreatePaymentRequest(parameters: createPeymentParams)
+        
+        createPaymentRequest.sendRequest(success: { (payment) in
+            self.currentPaymentId = payment.id
+            
+            let createPaymentLinkParams = QPCreatePaymentLinkParameters(id: payment.id, amount: price)
+            let createPaymentLinkRequest = QPCreatePaymentLinkRequest(parameters: createPaymentLinkParams)
+            
+            createPaymentLinkRequest.sendRequest(success: { (paymentLink) in
+                QuickPay.openPaymentLink(paymentUrl: paymentLink.url, onCancel: {
+                    self.pendingResult!(FlutterError(code: self.ACTIVITY_FAILURE_ERROR, message: "User cancel payment", details: nil))
+                    self.clearResult()
+                }, onResponse: { (success) in
+                    if let paymentId = self.currentPaymentId {
+                        self.currentPaymentId = nil
+
+                        QPGetPaymentRequest(id: paymentId).sendRequest(success: { (payment) in
+                            self.pendingResult!(payment.accepted)
+                        }, failure: { (data, response, error) in
+                            self.pendingResult!(FlutterError(code: self.PAYMENT_FAILURE_ERROR, message: error?.localizedDescription, details: nil))
+                            self.clearResult()
+                        })
+                    }
+                }, presentation: .present(controller: self.viewController!, animated: true, completion: nil))
+            }, failure: { (data, response, error) in
+                self.pendingResult!(FlutterError(code: self.CREATE_PAYMENT_LINK_ERROR, message: error?.localizedDescription, details: nil))
+                self.clearResult()
+            })
+        }, failure: { (data, response, error) in
+            self.pendingResult!(FlutterError(code: self.CREATE_PAYMENT_ERROR, message: error?.localizedDescription, details: nil))
+            self.clearResult()
+        })
+    }
+    
+    private func clearResult() {
+        pendingResult = nil
+    }
 }
