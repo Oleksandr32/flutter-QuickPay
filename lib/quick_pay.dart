@@ -44,10 +44,8 @@ class QuickPay {
           throw PaymentFailureException(error.details);
           break;
         default:
-          break;
+          rethrow;
       }
-
-      return false;
     }
   }
 }

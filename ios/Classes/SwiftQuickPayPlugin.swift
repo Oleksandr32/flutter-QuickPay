@@ -6,10 +6,10 @@ public class SwiftQuickPayPlugin: NSObject, FlutterPlugin {
     private let METHOD_CALL_INIT = "init"
     private let METHOD_CALL_MAKE_PAYMENT = "makePayment"
     
-    private let CREATE_PAYMENT_ERROR = "0"
-    private let CREATE_PAYMENT_LINK_ERROR = "1"
-    private let ACTIVITY_FAILURE_ERROR = "3"
-    private let PAYMENT_FAILURE_ERROR = "4"
+    private let CREATE_PAYMENT_ERROR = "1"
+    private let CREATE_PAYMENT_LINK_ERROR = "2"
+    private let ACTIVITY_FAILURE_ERROR = "4"
+    private let PAYMENT_FAILURE_ERROR = "5"
     
     private var currentPaymentId: Int? = nil
     private var pendingResult: FlutterResult? = nil
@@ -43,7 +43,6 @@ public class SwiftQuickPayPlugin: NSObject, FlutterPlugin {
     
     private func initQuickPay(apiKey: String) {
         QuickPay.initWith(apiKey: apiKey)
-        clearResult()
     }
     
     private func makePayment(currency: String, orderId: String, price: Double) {
@@ -58,8 +57,7 @@ public class SwiftQuickPayPlugin: NSObject, FlutterPlugin {
             
             createPaymentLinkRequest.sendRequest(success: { (paymentLink) in
                 QuickPay.openPaymentLink(paymentUrl: paymentLink.url, onCancel: {
-                    self.pendingResult!(FlutterError(code: self.ACTIVITY_FAILURE_ERROR, message: "User cancel payment", details: nil))
-                    self.clearResult()
+                    self.pendingResult!(FlutterError(code: self.ACTIVITY_FAILURE_ERROR, message: "User cancel payment", details: "User cancel payment"))
                 }, onResponse: { (success) in
                     if let paymentId = self.currentPaymentId {
                         self.currentPaymentId = nil
@@ -67,22 +65,15 @@ public class SwiftQuickPayPlugin: NSObject, FlutterPlugin {
                         QPGetPaymentRequest(id: paymentId).sendRequest(success: { (payment) in
                             self.pendingResult!(payment.accepted)
                         }, failure: { (data, response, error) in
-                            self.pendingResult!(FlutterError(code: self.PAYMENT_FAILURE_ERROR, message: error?.localizedDescription, details: nil))
-                            self.clearResult()
+                            self.pendingResult!(FlutterError(code: self.PAYMENT_FAILURE_ERROR, message: String(data: data!, encoding: String.Encoding.utf8)!, details: String(data: data!, encoding: String.Encoding.utf8)!))
                         })
                     }
                 }, presentation: .present(controller: self.viewController!, animated: true, completion: nil))
             }, failure: { (data, response, error) in
-                self.pendingResult!(FlutterError(code: self.CREATE_PAYMENT_LINK_ERROR, message: error?.localizedDescription, details: nil))
-                self.clearResult()
+                self.pendingResult!(FlutterError(code: self.CREATE_PAYMENT_LINK_ERROR, message: String(data: data!, encoding: String.Encoding.utf8)!, details: String(data: data!, encoding: String.Encoding.utf8)!))
             })
         }, failure: { (data, response, error) in
-            self.pendingResult!(FlutterError(code: self.CREATE_PAYMENT_ERROR, message: error?.localizedDescription, details: nil))
-            self.clearResult()
+            self.pendingResult!(FlutterError(code: self.CREATE_PAYMENT_ERROR, message: String(data: data!, encoding: String.Encoding.utf8)!, details: String(data: data!, encoding: String.Encoding.utf8)!))
         })
-    }
-    
-    private func clearResult() {
-        pendingResult = nil
     }
 }
