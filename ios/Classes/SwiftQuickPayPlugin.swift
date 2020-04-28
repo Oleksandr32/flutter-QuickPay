@@ -8,6 +8,7 @@ public class SwiftQuickPayPlugin: NSObject, FlutterPlugin {
     
     private let CREATE_PAYMENT_ERROR = "1"
     private let CREATE_PAYMENT_LINK_ERROR = "2"
+    private let ACTIVITY_ERROR = "3"
     private let ACTIVITY_FAILURE_ERROR = "4"
     private let PAYMENT_FAILURE_ERROR = "5"
     
@@ -57,16 +58,20 @@ public class SwiftQuickPayPlugin: NSObject, FlutterPlugin {
             
             createPaymentLinkRequest.sendRequest(success: { (paymentLink) in
                 QuickPay.openPaymentLink(paymentUrl: paymentLink.url, onCancel: {
-                    self.pendingResult!(FlutterError(code: self.ACTIVITY_FAILURE_ERROR, message: "User cancel payment", details: "User cancel payment"))
+                    self.pendingResult!(FlutterError(code: self.ACTIVITY_ERROR, message: "User cancel payment", details: "User cancel payment"))
                 }, onResponse: { (success) in
-                    if let paymentId = self.currentPaymentId {
-                        self.currentPaymentId = nil
+                    if (success) {
+                        if let paymentId = self.currentPaymentId {
+                            self.currentPaymentId = nil
 
-                        QPGetPaymentRequest(id: paymentId).sendRequest(success: { (payment) in
-                            self.pendingResult!(payment.accepted)
-                        }, failure: { (data, response, error) in
-                            self.pendingResult!(FlutterError(code: self.PAYMENT_FAILURE_ERROR, message: String(data: data!, encoding: String.Encoding.utf8)!, details: String(data: data!, encoding: String.Encoding.utf8)!))
-                        })
+                            QPGetPaymentRequest(id: paymentId).sendRequest(success: { (payment) in
+                                self.pendingResult!(payment.accepted)
+                            }, failure: { (data, response, error) in
+                                self.pendingResult!(FlutterError(code: self.PAYMENT_FAILURE_ERROR, message: String(data: data!, encoding: String.Encoding.utf8)!, details: String(data: data!, encoding: String.Encoding.utf8)!))
+                            })
+                        }
+                    } else {
+                        self.pendingResult!(FlutterError(code: self.ACTIVITY_FAILURE_ERROR, message: "User cancel payment", details: "User cancel payment"))
                     }
                 }, presentation: .present(controller: self.viewController!, animated: true, completion: nil))
             }, failure: { (data, response, error) in
