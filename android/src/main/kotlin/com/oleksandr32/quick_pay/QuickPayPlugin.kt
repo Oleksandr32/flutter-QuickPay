@@ -15,6 +15,7 @@ import io.flutter.plugin.common.PluginRegistry
 import io.flutter.plugin.common.PluginRegistry.Registrar
 import net.quickpay.quickpaysdk.QuickPay
 import net.quickpay.quickpaysdk.QuickPayActivity
+import net.quickpay.quickpaysdk.networking.quickpayapi.quickpaylink.models.QPPayment
 import net.quickpay.quickpaysdk.networking.quickpayapi.quickpaylink.payments.*
 
 /** QuickPayPlugin */
@@ -66,7 +67,7 @@ public class QuickPayPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, P
 
                         getPaymentRequest.sendRequest(
                                 listener = { payment ->
-                                    pendingResult?.success(payment.accepted)
+                                    pendingResult?.success(convertQPPaymentToMap(payment))
                                     currentPaymentId = null
                                 },
                                 errorListener = { _, message, error ->
@@ -141,6 +142,60 @@ public class QuickPayPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, P
         } catch (exception: Exception) {
             pendingResult?.error(QUICK_PAY_SETUP_ERROR, exception?.message, exception?.cause)
         }
+    }
+
+    private fun convertQPPaymentToMap(payment: QPPayment): Map<String, Any?> {
+        return mapOf(
+                "id" to payment.id,
+                "order_id" to payment.order_id,
+                "accepted" to payment.accepted,
+                "type" to payment.type,
+                "text_on_statement" to payment.text_on_statement,
+                "currency" to payment.currency,
+                "state" to payment.state,
+                "test_mode" to payment.test_mode,
+                "created_at" to payment.created_at,
+                "updated_at" to payment.updated_at,
+                "balance" to payment.balance,
+                "branding_id" to payment.branding_id,
+                "acquirer" to payment.acquirer,
+                "facilitator" to payment.facilitator,
+                "retented_at" to payment.retented_at,
+                "fee" to payment.fee,
+                "subscriptionId" to payment.subscriptionId,
+                "deadline_at" to payment.deadline_at,
+                "metadata" to mapOf(
+                        "type" to payment.metadata?.type,
+                        "origin" to payment.metadata?.origin,
+                        "brand" to payment.metadata?.brand,
+                        "bin" to payment.metadata?.bin,
+                        "corporate" to payment.metadata?.corporate,
+                        "last4" to payment.metadata?.last4,
+                        "exp_month" to payment.metadata?.exp_month,
+                        "exp_year" to payment.metadata?.exp_year,
+                        "country" to payment.metadata?.country,
+                        "is_3d_secure" to payment.metadata?.is_3d_secure,
+                        "issued_to" to payment.metadata?.issued_to,
+                        "hash" to payment.metadata?.hash,
+                        "number" to payment.metadata?.number,
+                        "customer_ip" to payment.metadata?.customer_ip,
+                        "customer_country" to payment.metadata?.customer_country,
+                        "shopsystem_name" to payment.metadata?.shopsystem_name,
+                        "shopsystem_version" to payment.metadata?.shopsystem_version
+                ),
+                "operatinons" to payment.operations?.map {
+                    mapOf(
+                            "id" to it.id,
+                            "type" to it.type,
+                            "amount" to it.amount,
+                            "pending" to it.pending,
+                            "qp_status_code" to it.qp_status_code,
+                            "qp_status_msg" to it.qp_status_msg,
+                            "aq_status_msg" to it.aq_status_msg,
+                            "acquirer" to it.acquirer
+                    )
+                }
+        )
     }
 
     override fun onReattachedToActivityForConfigChanges(activityPluginBinding: ActivityPluginBinding) {

@@ -2,7 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:meta/meta.dart';
-import 'package:quick_pay/quick_pay_exceptions.dart';
+import 'package:quick_pay/payment.dart';
+import 'package:quick_pay/exceptions.dart';
 
 class QuickPay {
   static const MethodChannel _channel = const MethodChannel('quick_pay');
@@ -11,7 +12,7 @@ class QuickPay {
     _channel.invokeMethod('init', {'api-key': apiKey});
   }
 
-  static Future<bool> makePayment({String currency, String orderId, double price}) async {
+  static Future<Payment> makePayment({String currency, String orderId, double price}) async {
     try {
       final result = await _channel.invokeMethod(
         'makePayment',
@@ -22,7 +23,7 @@ class QuickPay {
         },
       );
 
-      return result;
+      return Payment.fromMap(result);
     } on PlatformException catch (error) {
       switch (error.code) {
         case "0":

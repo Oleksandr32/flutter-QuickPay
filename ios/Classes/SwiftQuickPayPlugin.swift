@@ -65,7 +65,7 @@ public class SwiftQuickPayPlugin: NSObject, FlutterPlugin {
                             self.currentPaymentId = nil
 
                             QPGetPaymentRequest(id: paymentId).sendRequest(success: { (payment) in
-                                self.pendingResult!(payment.accepted)
+                                self.pendingResult!(self.convertQPPaymentToDictionary(payment: payment))
                             }, failure: { (data, response, error) in
                                 self.pendingResult!(FlutterError(code: self.PAYMENT_FAILURE_ERROR, message: String(data: data!, encoding: String.Encoding.utf8)!, details: String(data: data!, encoding: String.Encoding.utf8)!))
                             })
@@ -80,5 +80,59 @@ public class SwiftQuickPayPlugin: NSObject, FlutterPlugin {
         }, failure: { (data, response, error) in
             self.pendingResult!(FlutterError(code: self.CREATE_PAYMENT_ERROR, message: String(data: data!, encoding: String.Encoding.utf8)!, details: String(data: data!, encoding: String.Encoding.utf8)!))
         })
+    }
+    
+    private func convertQPPaymentToDictionary(payment: QPPayment) -> Dictionary<String, Any?> {
+        return [
+            "id" : payment.id,
+            "order_id" : payment.order_id,
+            "accepted" : payment.accepted,
+            "type" : payment.type,
+            "text_on_statement" : payment.text_on_statement,
+            "currency" : payment.currency,
+            "state" : payment.state,
+            "test_mode" : payment.test_mode,
+            "created_at" : payment.created_at,
+            "updated_at" : payment.updated_at,
+            "balance" : payment.balance,
+            "branding_id" : payment.branding_id,
+            "acquirer" : payment.acquirer,
+            "facilitator" : payment.facilitator,
+            "retented_at" : payment.retented_at,
+            "fee" : payment.fee,
+            "subscriptionId" : payment.subscriptionId,
+            "deadline_at" : payment.deadline_at,
+            "metadata" : [
+                "type" : payment.metadata?.type,
+                "origin" : payment.metadata?.origin,
+                "brand" : payment.metadata?.brand,
+                "bin" : payment.metadata?.bin,
+                "corporate" : payment.metadata?.corporate,
+                "last4" : payment.metadata?.last4,
+                "exp_month" : payment.metadata?.exp_month,
+                "exp_year" : payment.metadata?.exp_year,
+                "country" : payment.metadata?.country,
+                "is_3d_secure" : payment.metadata?.is_3d_secure,
+                "issued_to" : payment.metadata?.issued_to,
+                "hash" : payment.metadata?.hash,
+                "number" : payment.metadata?.number,
+                "customer_ip" : payment.metadata?.customer_ip,
+                "customer_country" : payment.metadata?.customer_country,
+                "shopsystem_name" : payment.metadata?.shopsystem_name,
+                "shopsystem_version" : payment.metadata?.shopsystem_version
+            ],
+            "operatinons" : payment.operations?.map {
+                [
+                    "id" : $0.id,
+                    "type" : $0.type,
+                    "amount" : $0.amount,
+                    "pending" : $0.pending,
+                    "qp_status_code" : $0.qp_status_code,
+                    "qp_status_msg" : $0.qp_status_msg,
+                    "aq_status_msg" : $0.aq_status_msg,
+                    "acquirer" : $0.acquirer
+                ]
+            }
+        ]
     }
 }
