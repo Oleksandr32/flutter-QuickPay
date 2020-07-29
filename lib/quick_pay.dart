@@ -12,7 +12,7 @@ class QuickPay {
     _channel.invokeMethod('init', {'api-key': apiKey});
   }
 
-  static Future<Payment> makePayment({String currency, String orderId, double price}) async {
+  static Future<Payment> makePayment({String currency, String orderId, double price, int autoCapture}) async {
     try {
       final result = await _channel.invokeMethod(
         'makePayment',
@@ -20,6 +20,7 @@ class QuickPay {
           'currency': currency,
           'order-id': orderId,
           'price': price,
+          'auto-capture': autoCapture,
         },
       );
 

@@ -38,7 +38,8 @@ public class SwiftQuickPayPlugin: NSObject, FlutterPlugin {
             guard let currency : String = args.value(forKey: "currency") as? String  else { return }
             guard let orderId : String = args.value(forKey: "order-id") as? String  else { return }
             guard let price : Double = args.value(forKey: "price") as? Double  else { return }
-            makePayment(currency: currency, orderId: orderId, price: price)
+            let autoCapture : Int? = args.value(forKey: "auto-capture") as? Int
+            makePayment(currency: currency, orderId: orderId, price: price, autoCapture: autoCapture)
         }
     }
     
@@ -46,7 +47,7 @@ public class SwiftQuickPayPlugin: NSObject, FlutterPlugin {
         QuickPay.initWith(apiKey: apiKey)
     }
     
-    private func makePayment(currency: String, orderId: String, price: Double) {
+    private func makePayment(currency: String, orderId: String, price: Double, autoCapture: Int?) {
         let createPeymentParams = QPCreatePaymentParameters(currency: currency, order_id: orderId)
         let createPaymentRequest = QPCreatePaymentRequest(parameters: createPeymentParams)
         
@@ -54,6 +55,7 @@ public class SwiftQuickPayPlugin: NSObject, FlutterPlugin {
             self.currentPaymentId = payment.id
             
             let createPaymentLinkParams = QPCreatePaymentLinkParameters(id: payment.id, amount: price)
+            createPaymentLinkParams.auto_capture = autoCapture
             let createPaymentLinkRequest = QPCreatePaymentLinkRequest(parameters: createPaymentLinkParams)
             
             createPaymentLinkRequest.sendRequest(success: { (paymentLink) in

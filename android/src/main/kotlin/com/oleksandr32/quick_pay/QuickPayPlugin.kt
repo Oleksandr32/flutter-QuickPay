@@ -100,7 +100,8 @@ public class QuickPayPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, P
                 val currency = call.argument<String>("currency")!!
                 val orderId = call.argument<String>("order-id")!!
                 val price = call.argument<Double>("price")!!
-                makePayment(currency, orderId, price)
+                val autoCapture = call.argument<Int>("auto-capture")
+                makePayment(currency, orderId, price, autoCapture)
             }
             else -> result.notImplemented()
         }
@@ -114,7 +115,7 @@ public class QuickPayPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, P
         QuickPay.init(apiKey, context)
     }
 
-    private fun makePayment(currency: String, orderId: String, price: Double) {
+    private fun makePayment(currency: String, orderId: String, price: Double, autoCapture: Int?) {
         val createPaymentParams = QPCreatePaymentParameters(currency, orderId)
         val createPaymentRequest = QPCreatePaymentRequest(createPaymentParams)
 
@@ -123,7 +124,9 @@ public class QuickPayPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, P
                     listener = { payment ->
                         currentPaymentId = payment.id
 
-                        val createPaymentLinkParameters = QPCreatePaymentLinkParameters(payment.id, price)
+                        val createPaymentLinkParameters = QPCreatePaymentLinkParameters(payment.id, price).apply {
+                            auto_capture = autoCapture
+                        }
                         val createPaymentLinkRequest = QPCreatePaymentLinkRequest(createPaymentLinkParameters)
 
                         createPaymentLinkRequest.sendRequest(
