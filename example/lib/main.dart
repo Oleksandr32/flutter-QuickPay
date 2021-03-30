@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
-
-import 'package:flutter/services.dart';
-import 'package:quick_pay/quick_pay.dart';
 import 'package:uuid/uuid.dart';
+
+import 'package:quick_pay/quick_pay.dart';
 
 void main() => runApp(MyApp());
 
@@ -16,6 +14,20 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+  }
+
+  void _initQuickPay() {
+    QuickPay.init(apiKey: 'PUT HERE YOUR QUICK PAY API KEY');
+  }
+
+  void _makePayment() async {
+    try {
+      final orderId = Uuid().v4().replaceAll('-', '').substring(0, 14);
+      final price = 245.0 * 100;
+      final payment = await QuickPay.makePayment(currency: 'DKK', orderId: orderId, price: price);
+    } catch (error) {
+      // TODO: handle error
+    }
   }
 
   @override
@@ -31,21 +43,12 @@ class _MyAppState extends State<MyApp> {
             children: <Widget>[
               FlatButton(
                 color: Colors.blue,
-                onPressed: () {
-                  QuickPay.init(apiKey: '');
-                },
+                onPressed: _initQuickPay,
                 child: Text('init'),
               ),
               FlatButton(
                 color: Colors.blue,
-                onPressed: () async {
-                  try {
-                    final orderId = Uuid().v4().replaceAll('-', '').substring(0, 14);
-                    final result = await QuickPay.makePayment(currency: 'DKK', orderId: orderId, price: 21.8);
-                  } catch (e) {
-                    // handle errors
-                  }
-                },
+                onPressed: _makePayment,
                 child: Text('make payment'),
               ),
             ],
