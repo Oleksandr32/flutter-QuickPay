@@ -1,0 +1,5 @@
+include ':quick_pay'
+include ':QuickPaySDK'
+
+project(':quick_pay').projectDir = file('android')
+project(':QuickPaySDK').projectDir = file('android/QuickPaySDK')

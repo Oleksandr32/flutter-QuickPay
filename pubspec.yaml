@@ -1,6 +1,6 @@
 name: quick_pay
 description: A Flutter plugin for QuickPay payments in your mobile application.
-version: 1.0.0
+version: 1.0.1
 author: Oleksandr Lysun
 homepage: https://github.com/Oleksandr32/flutter-QuickPay
 repository: https://github.com/Oleksandr32/flutter-QuickPay
